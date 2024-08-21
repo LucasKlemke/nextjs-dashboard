@@ -14,6 +14,17 @@ const FormSchema = z.object({
   status: z.enum(['pending', 'paid']),
   date: z.string(),
 });
+
+export async function deleteInvoice(id: string) {
+
+  try {
+    await sql`DELETE FROM invoices WHERE id = ${id}`;
+    revalidatePath('/dashboard/invoices');
+    return { message: 'Deleted Invoice.' };
+  } catch (e){
+    return { message: 'Database Error: Failed to Delete Invoice.' };
+  } 
+}
  
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 
@@ -33,10 +44,15 @@ export async function createInvoice(formData: FormData) {
       const amountInCents = amount * 100;
       const date = new Date().toISOString().split('T')[0];
       // Test it out:
-      await sql`
-    INSERT INTO invoices (customer_id, amount, status, date)
-    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-  `;
+      try{
+        await sql`
+        INSERT INTO invoices (customer_id, amount, status, date)
+        VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+      `;
+      } catch (e){
+        return { message: 'Database Error: Failed to Create Invoice'}
+      }
+
 
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
@@ -53,11 +69,17 @@ export async function updateInvoice(id: string, formData: FormData) {
  
   const amountInCents = amount * 100;
  
-  await sql`
+  try {
+    await sql`
     UPDATE invoices
     SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
     WHERE id = ${id}
   `;
+
+  } catch (e){
+    { message: 'Database Error: Failed to Update Invoice.' };
+  }
+  
  
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
